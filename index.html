@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+   <meta http-equiv="X-UA-Compatible" content="ie=edge">
+   <title>Search for GitHub repositories</title>
+   <link rel="stylesheet" href="style.css">
+</head>
+<body>
+   <main>
+      <article class="request">
+         <label>
+            <input id="requestField" type="search" name="search" placeholder="search" autocomplete="off" required >
+         </label>
+         <ul id="responseList" class="hidden"></ul>
+      </article>
+
+      <article class="choice">
+         <ul id="choiceList" class="hidden">
+         </ul>
+      </article>
+   </main>
+
+   <script src="js.js"></script>
+</body>
+</html>
