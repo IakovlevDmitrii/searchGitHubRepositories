@@ -8,11 +8,12 @@ const responseList = document.getElementById('responseList')
 const choiceList = document.getElementById('choiceList')
 
 // Для временного хранения результатов поиска
-let choice = {}
+const choice = {}
 
 // Функция для задержки отправки запроса
 const debounce = (fn, debounceTime) => {
     let inDebounce
+
     return function (...args) {
         clearTimeout(inDebounce)
         inDebounce = setTimeout(() => fn.apply(this, args), debounceTime)
@@ -27,6 +28,7 @@ requestField.addEventListener('input', () => {
     if (requestField.value.length === 0) {
         responseList.classList.add('hidden')
     }
+
     // Через 2 секунды после окончания ввода запроса
     debounce(() => {
 
@@ -36,8 +38,10 @@ requestField.addEventListener('input', () => {
         // Иначе, сделаем запрос, получим результат
         getResponse()
             .then((response) => {
+
                 // Из результата запроса составим список имен репозиториев
                 createRepoNameList(response)
+
                 // И покажем этот список
                 responseList.classList.remove('hidden')
             })
@@ -63,8 +67,10 @@ responseList.addEventListener('click', function (event) {
 
 // Если пользователь захочет удалить репозиторий из списка ранее выбранных
 choiceList.addEventListener('click', function (event) {
+
     // Определим репозиторий
     let target = event.target
+
     // Убедимся, что пользователь хочет удалить репозиторий
     if (target.className === 'close') {
         // Удалим элемент из списка сохраненных репозиториев
@@ -74,11 +80,14 @@ choiceList.addEventListener('click', function (event) {
 
 // Функция для поиска репозиториев
 async function getResponse() {
+
     // Будем искать то, что ввел пользователь
     let requestText = requestField.value
     let url = 'https://api.github.com/search/repositories?q=' + requestText
+
     // Ответ придет в формате JSON
     let responseJson = await fetch(url)
+
     // Функция вернет объект
     return responseJson.json()
 }
@@ -105,6 +114,7 @@ function createRepoNameList(object) {
         let responseItem = document.createElement('li')
         responseItem.classList.add('response__item')
         responseItem.textContent = repositoryName
+
         // Добавим элемент в список результатов запроса
         responseList.append(responseItem)
 
