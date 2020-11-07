@@ -1,158 +1,116 @@
-// Поле для ввода запроса
-const requestField = document.getElementById('requestField')
+const search = document.getElementById('search');
+const responseList = document.getElementById('responseList');
+const choiceList = document.getElementById('choiceList');
+const choiceStorage = {};
 
-// Список имен репозиториев
-const responseList = document.getElementById('responseList')
-
-// Список выбранных пользователем репозиториев
-const choiceList = document.getElementById('choiceList')
-
-// Для временного хранения результатов поиска
-const choice = {}
-
-// Функция для задержки отправки запроса
 const debounce = (fn, debounceTime) => {
-    let inDebounce
+    let inDebounce;
 
     return function (...args) {
-        clearTimeout(inDebounce)
-        inDebounce = setTimeout(() => fn.apply(this, args), debounceTime)
+        clearTimeout(inDebounce);
+        inDebounce = setTimeout(() => fn.apply(this, args), debounceTime);
     }
-}
+};
 
-// Когда пользователь начинает заполнять поле запроса
-requestField.addEventListener('input', () => {
-
-    /* Если пользователь очистил поле запроса,
-     закроем список результотов запроса */
-    if (requestField.value.length === 0) {
-        responseList.classList.add('hidden')
+const searchRepository = debounce( () => {
+    if (search.value.length === 0) {
+        clearRepoNamesList();
+        return;
     }
 
-    // Через 2 секунды после окончания ввода запроса
-    debounce(() => {
+    getRepositoriesList(search.value)
+        .then((repositoriesList) => {
+            clearRepoNamesList();
+            clearChoiceStorage();
+            createRepoNamesList(repositoriesList);
+            showList(responseList);
+        })
+        .catch( err => console.log (err))
+}, 1000);
 
-        // Если поле для ввода пустое, не будем делать запрос
-        if (requestField.value.length === 0) return
+search.addEventListener('input', () => {
+    if (search.value.length === 0) {
+        clearRepoNamesList();
+    }
+});
 
-        // Иначе, сделаем запрос, получим результат
-        getResponse()
-            .then((response) => {
+search.addEventListener('input', searchRepository);
 
-                // Из результата запроса составим список имен репозиториев
-                createRepoNameList(response)
-
-                // И покажем этот список
-                responseList.classList.remove('hidden')
-            })
-    }, 2000)()
-})
-
-// Когда пользователь выберет репозиторий из списка результатов запроса
 responseList.addEventListener('click', function (event) {
+    createChoiceItem(event.target);
+    showList(choiceList);
+    clearRepoNamesList();
+    search.value = '';
+});
 
-    // Определим выбранный репозиторий
-    let targetRepository = event.target
-    // Создадим элемент с информацией о выбранном репозитории
-    let choiceItem = createChoiceItem(targetRepository)
-
-    // Удалим репозиторий из списка результотов поиска
-    targetRepository.remove()
-
-    // Добавим созданный элемент в список выбранных репозиториев
-    choiceList.append(choiceItem)
-    // Покажем список выбранных репозиториев
-    choiceList.classList.remove('hidden')
-})
-
-// Если пользователь захочет удалить репозиторий из списка ранее выбранных
 choiceList.addEventListener('click', function (event) {
+    const target = event.target;
 
-    // Определим репозиторий
-    let target = event.target
-
-    // Убедимся, что пользователь хочет удалить репозиторий
-    if (target.className === 'close') {
-        // Удалим элемент из списка сохраненных репозиториев
-        target.closest('.choice__item').remove()
+    if (target.className === 'choice_close') {
+        target.closest('.choice__item').remove();
     }
-})
+});
 
-// Функция для поиска репозиториев
-async function getResponse() {
-
-    // Будем искать то, что ввел пользователь
-    let requestText = requestField.value
-    let url = 'https://api.github.com/search/repositories?q=' + requestText
-
-    // Ответ придет в формате JSON
-    let responseJson = await fetch(url)
-
-    // Функция вернет объект
-    return responseJson.json()
+function clearChoiceStorage() {
+    for (const repository in choiceStorage) delete choiceStorage[repository];                            // Очистим сохраненные результаты предыдущего запроса
 }
 
-// Функция для создания списка имен репозиториев полученных в результате запроса
-function createRepoNameList(object) {
+function clearRepoNamesList() {
+    let items = responseList.querySelectorAll('.response__item');
+    items.forEach((item) => item.remove());
+}
 
-    // Очистим список результатов предыдущего запроса
-    let oldSearch = responseList.querySelectorAll('.response__item')
-    oldSearch.forEach((item) => item.remove())
+function createChoiceItem(target) {
+    const item =
+        `<li class="choice__item">
+            <div class="choice__content">
+                <div>Name: ${target.textContent}</div>
+                <div>Owner: ${choiceStorage[target.textContent][0]}</div>
+                <div>Stars: ${choiceStorage[target.textContent][1]}</div>
+            </div>
+            <div class="choice_close">
+                <span class="close"></span>
+            </div>
+        </li>`;
 
-    // Очистим сохраненные результаты предыдущего запроса
-    for (let repo in choice) delete choice[repo]
+    choiceList.insertAdjacentHTML('afterbegin', item)
+}
 
-    // Возьмем пять первых репозиториев из результата запроса
-    for (let i = 0; i < 5; i++) {
+function createResponseItem(content) {
+    let responseItem = document.createElement('li');
+    responseItem.classList.add('response__item');
+    responseItem.textContent = content;
+    return responseItem;
+}
 
-        // Данные о репозитории
-        let repositoryData = object.items[i]
-        // Имя репозитория
-        let repositoryName = repositoryData.name
+function createRepoNamesList(list) {
+    if(!list.length) return;    // Если поиск не дал результата
 
-        // Создадим элемент для списка результов запроса
-        let responseItem = document.createElement('li')
-        responseItem.classList.add('response__item')
-        responseItem.textContent = repositoryName
+    let responsesNumber = 5;
+    if(list.length < 5) {       // Если поиск даст меньше пяти результатов
+        responsesNumber = list.length;
+    }
 
-        // Добавим элемент в список результатов запроса
-        responseList.append(responseItem)
+    for (let i = 0; i < responsesNumber; i++) {
+        let repository = list[i];
+        let repositoryName = repository.name;
+        let responseItem = createResponseItem(repositoryName);
+        responseList.append(responseItem);
 
-        // Сохраним в объект choice имя автора и количесво звезд репозитория
-        choice[repositoryName] = [
-            repositoryData.owner.login,
-            repositoryData.stargazers_count
+        choiceStorage[repositoryName] = [
+            repository.owner.login,
+            repository.stargazers_count
         ]
     }
 }
 
-// Функция для создания элемента выбранного репозитория
-function createChoiceItem(target) {
+async function getRepositoriesList(content) {
+    let url = 'https://api.github.com/search/repositories?q=' + content;
+    let responseJson = await fetch(url);
+    let response = await responseJson.json();
+    return response.items;
+}
 
-    let choiceItem = document.createElement('li');
-    choiceItem.classList.add('choice__item');
-
-    let choiceContent = document.createElement('div');
-    choiceContent.classList.add('choice__content');
-
-    let choiceName = document.createElement('div');
-    choiceName.textContent = `Name: ${target.textContent}`
-    choiceContent.append(choiceName)
-
-    // Информацию о выбранном репозитории будем брать из объекта choice
-    let choiceOwner = document.createElement('div')
-    choiceOwner.textContent = `Owner: ${choice[target.textContent][0]}`
-    choiceContent.append(choiceOwner)
-
-    let choiceStars = document.createElement('div')
-    choiceStars.textContent = `Stars: ${choice[target.textContent][1]}`
-    choiceContent.append(choiceStars)
-
-    choiceItem.append(choiceContent)
-
-    let close = document.createElement('span')
-    close.classList.add('close')
-    choiceItem.append(close);
-
-    return choiceItem
+function showList(list) {
+    list.classList.remove('hidden');
 }
